@@ -2,6 +2,7 @@ package server;
 
 import java.io.*;
 import java.util.*;
+import java.util.Base64.Decoder;
 import java.util.Base64.Encoder;
 
 import javax.crypto.BadPaddingException;
@@ -26,19 +27,23 @@ class Server{
 	{
 		byte[] publicKey;
 		byte[] privateKey;
+		PublicKey pubKey; 
+        PrivateKey priKey;     
+        
 	}
 	public static void MakeRSAKey(Key key) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException
 	{
 		KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
         generator.initialize(1024); 
         KeyPair keyPair = generator.generateKeyPair();
-        PublicKey publicKey = keyPair.getPublic();
-        PrivateKey privateKey = keyPair.getPrivate();     
+        key.pubKey = keyPair.getPublic();
+        key.priKey = keyPair.getPrivate();
+        
         Charset charset = Charset.forName("UTF-8");
         
         System.out.println("=== RSA 키생성 ===");
-        key.publicKey = publicKey.getEncoded();
-        key.privateKey = privateKey.getEncoded(); 
+        key.publicKey = key.pubKey.getEncoded();
+        key.privateKey = key.priKey.getEncoded(); 
         
         /*
         System.out.println(" 공개키 포맷 : "+publicKey.getFormat());
@@ -104,7 +109,7 @@ class Server{
 	private static String login_succ = "로그인 성공";
 	private static String login_fail = "로그인 실패";
 	
-	public static void main(String[] args) throws IOException, InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException{
+	public static void main(String[] args) throws IOException, GeneralSecurityException{
 	
 		
 		//키쌍을 가지고 있는 class 생성
@@ -133,26 +138,37 @@ class Server{
 		//전송을 위해 공개키를 Base64타입으로 인코딩
 		Encoder encoder = Base64.getEncoder();
 		String publicKey = encoder.encodeToString(key.publicKey);
-			
-		//공개키 전송
-	//	WriteToClient.write(publicKey);
-	//	WriteToClient.flush();
+		Decoder decoder = Base64.getDecoder();
 		
-
-		String recvMsg=null;
+		//공개키 전송
+		WriteToClient.write(publicKey+"\n");
+		WriteToClient.flush();
+		
+		String recvEncrpMsg=null;
+		
+		Charset charset = Charset.forName("UTF-8");
+	        
 		//통신 부분 
 		while(true){	
 			
 			
-			//키 입력 받음
-			recvMsg=ReadFromClient.readLine();
-			System.out.println("Recv Msg : " + recvMsg);
+			//클라이언트로 부터 메세지 받음 
+			recvEncrpMsg=ReadFromClient.readLine();
 			
+			//Base64 디코딩
+			byte[] decodeBytes = decoder.decode(recvEncrpMsg);
+			System.out.println("암호화 문장 : " + bytesToHex(decodeBytes));
+			byte[] decrpMsg=decrypt(key.priKey,decodeBytes);
+			String recvPlainText=new String(decrpMsg);
+			System.out.println("Recv Msg : " + recvPlainText);
+			
+		    
 
-			if(recvMsg.equals("exit"))
-			{
-				socket.close();
-			}
+//			if(decrpMsg.toString().equals("exit"))
+//			{
+//				socket.close();
+//			}
+//			
 			/*
 			if(recvMsg.equals(1)){
 				
