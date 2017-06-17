@@ -9,7 +9,11 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.security.GeneralSecurityException;
+import java.security.PublicKey;
+import java.util.Base64;
 import java.util.Scanner;
+import java.util.Base64.Encoder;
 
 
 public class login extends reg_main{
@@ -17,14 +21,14 @@ public class login extends reg_main{
 	private String ID;
 	private String password;
 	private String check = "login";
-	private String login_succ;
+
 	
 
 	
-	public login(Socket sok) throws UnknownHostException, IOException{
+	public login(Socket sok, PublicKey pubkey) throws UnknownHostException, IOException, GeneralSecurityException{
 		
 		BufferedReader type = new BufferedReader(new InputStreamReader(System.in));
-		
+		BufferedReader type1 = new BufferedReader(new InputStreamReader(sok.getInputStream()));
 
 		
 		OutputStream reg_type = sok.getOutputStream();
@@ -32,29 +36,32 @@ public class login extends reg_main{
 		
 		InputStream get_type = sok.getInputStream();
 		BufferedReader login_type = new BufferedReader(new InputStreamReader(get_type));
-		
-		trans_login_type.write(check+ "\n"); //로그인인지 아닌지 체크
-		trans_login_type.flush();
-		
+				
 		System.out.print("ID = ");
 		
 		ID = type.readLine();
-		trans_login_type.write(ID+ "\n");
+		byte[] encryptData = encrypt(pubkey, ID.getBytes());
+		System.out.println(bytesToHex(encryptData));
+		Encoder encoder= Base64.getEncoder();
+		String encodestring = encoder.encodeToString(encryptData);
+		trans_login_type.write(encodestring+ "\n");
 		trans_login_type.flush();
 	    
 		System.out.print("PW = ");
 		
 		password = type.readLine();
-		trans_login_type.write(password+ "\n");
+		byte[] encryptData1 = encrypt(pubkey, password.getBytes());
+		System.out.println(bytesToHex(encryptData1));
+		Encoder encoder1= Base64.getEncoder();
+		String encodestring1 = encoder1.encodeToString(encryptData1);
+		System.out.println(encodestring1);
+		trans_login_type.write(encodestring1+ "\n");
 		trans_login_type.flush();
 		
-		login_succ = login_type.readLine();
+		String ment = type1.readLine();
+	    System.out.println(ment);
 		
-		if(login_succ == null){
-			System.out.println("사용자 없음");
-		}
 		
-		System.out.println(login_succ);
 	    
 	}
 		

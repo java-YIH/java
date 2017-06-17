@@ -25,11 +25,10 @@ public class reg_main {
 	   BufferedReader num = new BufferedReader(new InputStreamReader(System.in));
 	   Socket sok = new Socket("10.1.1.149",8013);
        InputStream in = null;
-	   DataInputStream din = new DataInputStream(in);
 	   register register = null;   //객체등록?
-	   login login = null;  
+	   login login = null;
+	   certlogin certlogin = null;
 	   
-	   String message;
 	   OutputStream reg_type = sok.getOutputStream();
 	   BufferedWriter trans_reg_type = new BufferedWriter(new OutputStreamWriter(reg_type));
 	   InputStream get_type = sok.getInputStream();
@@ -51,55 +50,62 @@ public class reg_main {
 
       while(true) {
 
+    	  
+    	  System.out.println();
+          System.out.println("1.신규가입");
+          System.out.println("2.로그인");
+          System.out.println("3.인증서로그인");
+          System.out.println("4.종료");
   		String send;
   		send = stin.readLine();
   		System.out.println(send);
+  		
 		byte[] encryptData = encrypt(pubkey, send.getBytes());
 		Encoder encoder= Base64.getEncoder();
 		String encodestring = encoder.encodeToString(encryptData);
+		int ott = Integer.parseInt(send);
+  		if (ott < 5){
   		SendMessage.write(encodestring + "\n");
-//  		SendMessage.write(send + "\n");
   		SendMessage.flush();
   		System.out.println(bytesToHex(encryptData));
-      }
+  		}
   		
-      
-  		
-    	
       
 
-//    	 System.out.println();
-//         System.out.println("1.신규가입");
-//         System.out.println("2.로그인");
-//         System.out.println("3.종료");
+
+    	 
          
-//         int pos = Integer.parseInt(num.readLine());
+
          
+      
          
-         
-//         if(pos == 1){
-//        	 register = new register(sok);  // 이 파일 (register)실행
+         if(send.equalsIgnoreCase("1")){
+       	 register = new register(sok, pubkey);  // 이 파일 (register)실행
         	 
-//         }
-//
-//         
-//         else if(pos == 2){
-//
-//        		login = new login(sok); // 이 파일 (login)실행
-//        	 
-//         }
-//
-//         
-//         else if(pos == 3){
-//        	 
-//        	 System.exit(0);
-//        	 
-//         }
+         }
+       
+         if(send.equalsIgnoreCase("2")){
+       	 login = new login(sok, pubkey);  // 이 파일 (login)실행
+        	 
+         }
+         if(send.equalsIgnoreCase("3")){
+        	 certlogin = new certlogin(sok, pubkey);
+         }
+          if(send.equalsIgnoreCase("4")){
+         	 System.out.println("종료되었습니다.");      	 
+        	 System.exit(0);
+      	 
+         }
+      
 
          
 //         else {
+//        	 int send1 = Integer.parseInt(send);
+//       		if (send1 > 3){
 //             System.out.println("잘못 입력 하셨습니다.");
+//       		}
 //         }
+      }
    }
    public static byte[] encrypt(PublicKey pubkey, byte[] plainData)
 			throws GeneralSecurityException {
@@ -120,7 +126,7 @@ public static String bytesToHex(byte[] bytes) {
 	    return sb.toString();
 	}
    }
-   
+
 
    
 
