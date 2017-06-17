@@ -9,6 +9,12 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
+import javax.security.auth.x500.X500Principal;
+
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.pqc.math.linearalgebra.ByteUtils;
+
+import server.Certification.CertType;
 
 import java.net.*;
 import java.nio.charset.Charset;
@@ -16,9 +22,19 @@ import java.security.GeneralSecurityException;
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.Security;
+import java.security.Signature;
+import java.security.SignatureException;
+import java.security.UnrecoverableKeyException;
+import java.security.cert.CertificateEncodingException;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
 
 
 class Server{
@@ -29,7 +45,7 @@ class Server{
 		byte[] privateKey;
 		PublicKey pubKey; 
         PrivateKey priKey;     
-        
+        PrivateKey restoreFromFileKey;
 	}
 	public static void MakeRSAKey(Key key) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException
 	{
@@ -38,48 +54,13 @@ class Server{
         KeyPair keyPair = generator.generateKeyPair();
         key.pubKey = keyPair.getPublic();
         key.priKey = keyPair.getPrivate();
-        
-        Charset charset = Charset.forName("UTF-8");
+
         
         System.out.println("=== RSA 키생성 ===");
         key.publicKey = key.pubKey.getEncoded();
         key.privateKey = key.priKey.getEncoded(); 
         
-        /*
-        System.out.println(" 공개키 포맷 : "+publicKey.getFormat());
-        System.out.println(" 개인키 포맷 : "+privateKey.getFormat());
-        System.out.println(" 공개키 : "+bytesToHex(key.publicKey));
-        System.out.println(" 공개키 길이 : "+key.publicKey.length+ " byte" );	
-        System.out.println(" 개인키 : "+bytesToHex(key.privateKey));
-        System.out.println(" 개인키 길이 : "+key.privateKey.length+ " byte" );
-        System.out.println();
-       */
-        /*
-        System.out.println("=== RSA 암호화 ===");
-        Scanner s = new Scanner(System.in);
-        System.out.print("암호화할 평문을 입력해주세요 >>> ");
-        String text = s.next();  
-        byte[] t0 = text.getBytes(charset);
-        System.out.println(" Plaintext : "+text);
-        System.out.println(" Plaintext : "+bytesToHex(t0));
-        System.out.println(" Plaintext Length : "+t0.length+ " byte" );	
-
-        Cipher cipher = Cipher.getInstance("RSA");
-        cipher.init(Cipher.ENCRYPT_MODE, publicKey);
-        byte[] b0 = cipher.doFinal(t0);
-        System.out.println(" Ciphertext : "+bytesToHex(b0));
-        System.out.println(" Ciphertext Length : "+b0.length+ " byte" );	
-        System.out.println();
-     */
-        /*
-        System.out.println("=== RSA 복호화 ===");
-        cipher.init(Cipher.DECRYPT_MODE, privateKey);
-        byte[] b1 = cipher.doFinal(b0);
-        System.out.println(" Recovered Plaintext : "+ bytesToHex(b1)); 
-        System.out.println(" Recovered Plaintext Length : "+b1.length+ " byte" );	
-        System.out.println(" Recovered Plaintext : "+ new String(b1, charset));
-        */
-	    		        
+           
 	}
    
 	public static byte[] decrypt(PrivateKey privateKey, byte[] encryptData) throws GeneralSecurityException {
@@ -100,18 +81,11 @@ class Server{
 	 
 	    return sb.toString();
 	}
-	private static String ID;
-	private static String password;
-	
-	private static String lohin_ID;
-	private static String lohin_password;
-	
-	private static String login_succ = "로그인 성공";
-	private static String login_fail = "로그인 실패";
+
 	
 	public static void main(String[] args) throws IOException, GeneralSecurityException{
 	
-		
+	
 		//키쌍을 가지고 있는 class 생성
 		Key key = new Key();
 		MakeRSAKey(key); //키 생성
@@ -138,66 +112,252 @@ class Server{
 		//전송을 위해 공개키를 Base64타입으로 인코딩
 		Encoder encoder = Base64.getEncoder();
 		String publicKey = encoder.encodeToString(key.publicKey);
-		Decoder decoder = Base64.getDecoder();
+
 		
 		//공개키 전송
 		WriteToClient.write(publicKey+"\n");
 		WriteToClient.flush();
 		
-		String recvEncrpMsg=null;
+		String recvEncrptMsg=null;
+	
+		/********************************************인증서 관련 소스 코드 ********************************************************/
+	      // BouncyCastle Provider 추가
+	    Security.addProvider(new BouncyCastleProvider());  // 프로바이더 추가 
+	      
+		Certification cerification = new Certification();
 		
-		Charset charset = Charset.forName("UTF-8");
-	        
+		
+		KeyPair rootKeyPair = Certification.generateRSAKeyPair();  // 루트인증기관 키생성 및 인증서 발급
+        X509Certificate rootCert = Certification.generateCertificate(
+               new X500Principal("C=KR,CN=ROOT"), rootKeyPair.getPublic(),
+               rootKeyPair.getPrivate(), null, CertType.ROOT);
+
+        KeyPair interKeyPair = Certification.generateRSAKeyPair();  // 중간인증기관의 키생성 및 인증서 발급 
+        X509Certificate interCert = Certification.generateCertificate(
+               new X500Principal("C=KR,CN=INTER"), interKeyPair.getPublic(),
+               rootKeyPair.getPrivate(), rootCert, CertType.INTER);
+         
+        KeyPair userKeyPair;
+        X509Certificate userCert; //아래의 계정 생성에서 추가 
+		/*******************************************************************************************************************/
+		
+		
 		//통신 부분 
 		while(true){	
 			
 			
 			//클라이언트로 부터 메세지 받음 
-			recvEncrpMsg=ReadFromClient.readLine();
+			recvEncrptMsg=ReadFromClient.readLine();
 			
-			//Base64 디코딩
-			byte[] decodeBytes = decoder.decode(recvEncrpMsg);
-			System.out.println("암호화 문장 : " + bytesToHex(decodeBytes));
-			byte[] decrpMsg=decrypt(key.priKey,decodeBytes);
-			String recvPlainText=new String(decrpMsg);
-			System.out.println("Recv Msg : " + recvPlainText);
 			
-		    
-
-//			if(decrpMsg.toString().equals("exit"))
-//			{
-//				socket.close();
-//			}
-//			
-			/*
-			if(recvMsg.equals(1)){
+			switch(Integer.parseInt(decryptMsg(recvEncrptMsg,key.priKey)))
+			{
+			case 1:
+				String makeId=ReadFromClient.readLine();
+				String makePasswd=ReadFromClient.readLine();
+				String makeCertPasswd=ReadFromClient.readLine();
 				
-				lohin_ID = ReadFromClient.readLine();
+				String decryptId=decryptMsg(makeId, key.priKey);
+				String decryptPasswd=decryptMsg(makePasswd, key.priKey);
+				String decryptCertPasswd=decryptMsg(makeCertPasswd, key.priKey);
 				
-				lohin_password = ReadFromClient.readLine();
-				
-				if(ID == null || password == null){
-					System.out.println("등록된 사용자가 존재하지 않습니다.");
-				}
-				
-				else if(lohin_ID.equals(ID) && lohin_password.equals(password)){
-					
-					WriteToClient.write(login_succ + "\n"); // 클라이언트로 성공 넘김
+				if(makeAccount(decryptId,decryptPasswd))
+				{
+					WriteToClient.write("계정 생성 완료 ! "+"\n");
 					WriteToClient.flush();
-					
+				
+					 userKeyPair= Certification.generateRSAKeyPair();  
+			         userCert = Certification.generateCertificate(
+			               new X500Principal("C=KR,O=KUT,OU=IME,CN="+ decryptId), userKeyPair.getPublic(),
+			               interKeyPair.getPrivate(), interCert, CertType.ENDENTITY);
+			         
+			         certSaveToFile(userCert,decryptId); //파일로 인증서 저장
+			         
+			         //인증서 개인키를 파일로 저장하기 위한 비밀키 저장
+			         privKeySaveToFile(decryptCertPasswd,userCert,interCert,rootCert,userKeyPair,decryptId);
+			         
+			         System.out.println(userKeyPair.getPrivate());
 				}
 				else{
-					WriteToClient.write(login_fail + "\n"); // 클라이언트로 실패 넘김
+					WriteToClient.write("계정 생성 실패 !(이미 사용중인 아이디 입니다)"+"\n");
 					WriteToClient.flush();
 				}
-			}else{
 				
-				ID = ReadFromClient.readLine();
+				break;
+			case 2: 
+				String loginId=ReadFromClient.readLine();
+				String loginPasswd=ReadFromClient.readLine();
+				if(login(decryptMsg(loginId, key.priKey),decryptMsg(loginPasswd, key.priKey)))
+				{
+					WriteToClient.write("로그인 성공!"+"\n");
+					WriteToClient.flush();
+				}else
+				{
+					WriteToClient.write("로그인 실패 !" + "\n");
+					WriteToClient.flush();
+				}
 				
-				password = ReadFromClient.readLine();
+				break;
+			case 3:
+				String certLoginId=ReadFromClient.readLine();
+				String certLoginPasswd=ReadFromClient.readLine();
+				String decryptCertLoginId=decryptMsg(certLoginId, key.priKey);
+				String decryptCertLoginPasswd=decryptMsg(certLoginPasswd, key.priKey);
+				
+				if(!loadKeyFromFile(decryptCertLoginId,decryptCertLoginPasswd ,key))//파일이 없으면 즉, 등록된 사용자가 아니면
+				{
+					WriteToClient.write("등록된 사용자가 아닙니다." + "\n");
+					WriteToClient.flush();
+				}else{
+					System.out.println(key.restoreFromFileKey);
+					if(verification(key.restoreFromFileKey,decryptCertLoginId))
+					{
+						WriteToClient.write("로그인 성공!" + "\n");
+						WriteToClient.flush();	
+					}else{
+						WriteToClient.write("로그인 실패!" + "\n");
+						WriteToClient.flush();
+					}
+				}
+				
+		         break;
+			case 4:
+				socket.close();
+				System.exit(0);
+				
 			}
-			*/
+			
+			
+		}
 
+	}
+
+	private static boolean verification(PrivateKey userPrivKey,String certId) throws UnsupportedEncodingException, NoSuchAlgorithmException, FileNotFoundException, InvalidKeyException, SignatureException, CertificateException {
+		// TODO Auto-generated method stub
+		
+	        // 6.1 RSA 서명  (Alice의 개인키 이용)    
+	     String sigData="전자서명 테스트";
+	     byte[] data = sigData.getBytes("UTF8");
+	              
+	     Signature sig = Signature.getInstance("MD5WithRSA");
+	     FileInputStream fis = new FileInputStream(new File(certId+"Priv.key"));
+	     
+	     sig.initSign(userPrivKey);
+	     sig.update(data);
+	     byte[] signatureBytes = sig.sign();
+	     // 6.2 RSA 서명 검증  (Alice의 인증서에 있는 공개키 이용)    
+	     CertificateFactory cf1 = CertificateFactory.getInstance("X.509");
+	     FileInputStream fis1 = new FileInputStream(new File(certId+"Cert.der"));
+	     X509Certificate cert1 = (X509Certificate)cf1.generateCertificate(fis1);  // 파일에서 읽어서 인증서 형식으로 할당 
+	     
+	     sig.initVerify(cert1.getPublicKey());
+	     sig.update(data);
+	     
+	     return sig.verify(signatureBytes);
+	     
+	}
+
+	private static boolean loadKeyFromFile(String certLoginId, String certLoginPasswd, Key key) throws KeyStoreException, NoSuchAlgorithmException, CertificateException, IOException, UnrecoverableKeyException {
+		// TODO Auto-generated method stub
+		
+		File file = new File(certLoginId +"Priv.key");
+		
+		if(file.exists())
+		{
+	        FileInputStream fileInputStream = new FileInputStream(file);
+	        KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
+	       try {
+	        	ks.load(fileInputStream,certLoginPasswd.toCharArray());  // 파일에서 읽어와서 키스토어에 로드 	
+			} catch (Exception e) {
+				// TODO: handle exception
+		        	return false;
+		        
+			}
+	        fileInputStream.close();
+	        key.restoreFromFileKey= (PrivateKey)ks.getKey(certLoginId + "PrivateKeyAlias",certLoginPasswd.toCharArray()); // 키스토어에서 개인키를 읽어올때 암호화 키 코드 필요 
+	        
+	        return true;
+	        
+		}else
+			return false;
+		
+	}
+
+	private static void privKeySaveToFile(String decryptCertPasswd, X509Certificate userCert, X509Certificate interCert,
+			X509Certificate rootCert, KeyPair userKeyPair, String decryptId) throws KeyStoreException, NoSuchAlgorithmException, CertificateException, IOException {
+		// TODO Auto-generated method stub
+		 char[] code = decryptCertPasswd.toCharArray();
+         KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());  // 키스토어라는 형태로 저장하게 됨 
+         keyStore.load(null,null);
+         
+         X509Certificate[] chain = new X509Certificate[3];  // 키스토어에 저장시 인증체인 정보 필요. 루트로부터 사용자까지의 인증서 정보  
+         chain[0] = userCert;  // 사용자 인증서 
+         chain[1] = interCert;  // 중간인증기관 인증서 (중간인증기관이 Alice에게 인증서를 발급) 
+         chain[2] = rootCert;  // 루트인증기관 인증서 (루트인증기관이 중간인증기관에게 인증서를 발급) 
+         keyStore.setKeyEntry(decryptId + "PrivateKeyAlias",userKeyPair.getPrivate(),code,chain); // 필요한 정보를 키스토어에 암호화하여 저장 
+         FileOutputStream fileOutputStream = new FileOutputStream(new File(decryptId+"Priv.key"));   
+         keyStore.store(fileOutputStream,code);  // 키스토어의 내용을 code로 암호화하여 파일로 저장 
+         fileOutputStream.close();
+        
+		
+	}
+
+	private static void certSaveToFile(X509Certificate userCert, String decryptId) throws CertificateEncodingException, IOException {
+		// TODO Auto-generated method stub
+        FileOutputStream outputStream = new FileOutputStream(new File(decryptId+"Cert.der")); 
+        outputStream.write(userCert.getEncoded());  // 파일로 저장 
+        outputStream.close();
+
+		
+	}
+
+	private static String decryptMsg(String recvEncrptMsg,PrivateKey privateKey) throws GeneralSecurityException {
+		// TODO Auto-generated method stub
+		//Base64 디코딩
+		Decoder decoder = Base64.getDecoder();
+		byte[] decodeBytes = decoder.decode(recvEncrptMsg);
+		System.out.println("암호화 문장 : " + bytesToHex(decodeBytes));
+		byte[] decrpMsg=decrypt(privateKey,decodeBytes);
+		String recvPlainText=new String(decrpMsg);
+		System.out.println("Recv Msg : " + recvPlainText);
+		return recvPlainText;
+		
+	}
+
+	private static boolean login(String loginId, String loginPasswd) throws IOException {
+		// TODO Auto-generated method stub
+		File accountFile = new File(loginId+".Account");
+		if(accountFile.exists()) 
+		{
+			BufferedReader inputFile = new BufferedReader(new FileReader(accountFile));
+			inputFile.readLine(); //skip ID
+			String readPasswd=inputFile.readLine();
+			if(loginPasswd.equals(readPasswd))
+				return true;
+			
+			return false;
+			
+		}else
+			return false;
+		
+	}
+
+	private static boolean makeAccount(String Id,String Passwd) throws IOException {
+
+		File accountFile = new File(Id+".Account");
+		if(!accountFile.exists()) //파일이 없으면 생성 후 true 반환
+		{
+			BufferedWriter outputFile = new BufferedWriter(new PrintWriter(accountFile));
+	
+			outputFile.write(Id+"\n");
+			outputFile.write(Passwd+"\n");
+			outputFile.flush();
+			outputFile.close(); // 파일을 닫음.
+			
+			return true;
+		}else //있으면 false반환
+		{
+			return false;
 		}
 
 	}
