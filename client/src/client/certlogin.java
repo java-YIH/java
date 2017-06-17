@@ -48,5 +48,5 @@ public class certlogin extends reg_main{
 	    String ment = type1.readLine();
 	    System.out.println(ment);
 	}
-
+ 
 }
