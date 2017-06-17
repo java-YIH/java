@@ -15,7 +15,7 @@ public class reg_main {
 	   
 	   register register = null;   //객체등록?
 	   login login = null;  
-
+//fdsafasdfadsfdsfasfasfs
       while(true) {
     	 System.out.println();
          System.out.println("1.신규가입");
