@@ -2,6 +2,7 @@ package server;
 
 import java.io.*;
 import java.util.*;
+import java.util.Base64.Encoder;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -10,6 +11,7 @@ import javax.crypto.NoSuchPaddingException;
 
 import java.net.*;
 import java.nio.charset.Charset;
+import java.security.GeneralSecurityException;
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -25,7 +27,7 @@ class Server{
 		byte[] publicKey;
 		byte[] privateKey;
 	}
-	public static void RSAEncryption(Key key) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException
+	public static void MakeRSAKey(Key key) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException
 	{
 		KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
         generator.initialize(1024); 
@@ -37,6 +39,8 @@ class Server{
         System.out.println("=== RSA 키생성 ===");
         key.publicKey = publicKey.getEncoded();
         key.privateKey = privateKey.getEncoded(); 
+        
+        /*
         System.out.println(" 공개키 포맷 : "+publicKey.getFormat());
         System.out.println(" 개인키 포맷 : "+privateKey.getFormat());
         System.out.println(" 공개키 : "+bytesToHex(key.publicKey));
@@ -44,7 +48,7 @@ class Server{
         System.out.println(" 개인키 : "+bytesToHex(key.privateKey));
         System.out.println(" 개인키 길이 : "+key.privateKey.length+ " byte" );
         System.out.println();
-       
+       */
         /*
         System.out.println("=== RSA 암호화 ===");
         Scanner s = new Scanner(System.in);
@@ -73,6 +77,13 @@ class Server{
 	    		        
 	}
    
+	public static byte[] decrypt(PrivateKey privateKey, byte[] encryptData) throws GeneralSecurityException {
+			Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+			cipher.init(Cipher.DECRYPT_MODE, privateKey);
+			byte[] plainData = cipher.doFinal(encryptData);
+			return plainData;
+			}
+
 	public static String bytesToHex(byte[] bytes) {
 	    StringBuilder sb = new StringBuilder(bytes.length * 2);
 	 
@@ -84,7 +95,6 @@ class Server{
 	 
 	    return sb.toString();
 	}
-	private static String name;
 	private static String ID;
 	private static String password;
 	
@@ -96,36 +106,59 @@ class Server{
 	
 	public static void main(String[] args) throws IOException, InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException{
 	
+		
+		//키쌍을 가지고 있는 class 생성
 		Key key = new Key();
-		RSAEncryption(key);
-		System.out.println("Main In ");
+		MakeRSAKey(key); //키 생성
+		
 		System.out.println(" 공개키 : "+bytesToHex(key.publicKey));
 		
-		ServerSocket serverSocket = null;
-		serverSocket = new ServerSocket(8011);
+		//포트 개방
+		ServerSocket serverSocket = new ServerSocket(8013);
+
 		
-		System.out.println("Server strating");
+		System.out.println("Listening...");
+		Socket socket = serverSocket.accept();
+		System.out.println("Client("+socket.getInetAddress()+") Connect!");
 		
+		//출력 스트림 생성
+		OutputStream OutputClient = socket.getOutputStream();
+		BufferedWriter WriteToClient = new BufferedWriter(new OutputStreamWriter(OutputClient));
+		
+		//입력 스트림 생성
+		InputStream InputClient = socket.getInputStream();
+		BufferedReader ReadFromClient = new BufferedReader(new InputStreamReader(InputClient));
+	
+	
+		//전송을 위해 공개키를 Base64타입으로 인코딩
+		Encoder encoder = Base64.getEncoder();
+		String publicKey = encoder.encodeToString(key.publicKey);
+			
+		//공개키 전송
+	//	WriteToClient.write(publicKey);
+	//	WriteToClient.flush();
+		
+
+		String recvMsg=null;
+		//통신 부분 
 		while(true){	
-			Socket socket = null;
-		
-			socket = serverSocket.accept();
 			
-			OutputStream check = socket.getOutputStream();
-			BufferedWriter check_login = new BufferedWriter(new OutputStreamWriter(check));
 			
-			InputStream get_type = socket.getInputStream();
-			BufferedReader save_type = new BufferedReader(new InputStreamReader(get_type));
-		
-			System.out.println(socket.getInetAddress()+ " Connect");
+			//키 입력 받음
+			recvMsg=ReadFromClient.readLine();
+			System.out.println("Recv Msg : " + recvMsg);
 			
-			name = save_type.readLine();
-			
-			if(name.equals("login")){
+
+			if(recvMsg.equals("exit"))
+			{
+				socket.close();
+			}
+			/*
+			if(recvMsg.equals(1)){
 				
-				lohin_ID = save_type.readLine();
+				lohin_ID = ReadFromClient.readLine();
 				
-				lohin_password = save_type.readLine();
+				lohin_password = ReadFromClient.readLine();
 				
 				if(ID == null || password == null){
 					System.out.println("등록된 사용자가 존재하지 않습니다.");
@@ -133,25 +166,23 @@ class Server{
 				
 				else if(lohin_ID.equals(ID) && lohin_password.equals(password)){
 					
-					check_login.write(login_succ + "\n"); // 클라이언트로 성공 넘김
-					check_login.flush();
+					WriteToClient.write(login_succ + "\n"); // 클라이언트로 성공 넘김
+					WriteToClient.flush();
 					
 				}
 				else{
-					check_login.write(login_fail + "\n"); // 클라이언트로 실패 넘김
-					check_login.flush();
+					WriteToClient.write(login_fail + "\n"); // 클라이언트로 실패 넘김
+					WriteToClient.flush();
 				}
-			}
-			
-			
-			else{
+			}else{
 				
-				ID = save_type.readLine();
+				ID = ReadFromClient.readLine();
 				
-				password = save_type.readLine();
+				password = ReadFromClient.readLine();
 			}
-	
-			socket.close();
+			*/
+
 		}
+
 	}
 }
