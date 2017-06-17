@@ -86,6 +86,7 @@ class Server{
 	public static void main(String[] args) throws IOException, GeneralSecurityException{
 	
 	
+		boolean flag=false;
 		//키쌍을 가지고 있는 class 생성
 		Key key = new Key();
 		MakeRSAKey(key); //키 생성
@@ -191,10 +192,12 @@ class Server{
 				{
 					WriteToClient.write("로그인 성공!"+"\n");
 					WriteToClient.flush();
+					flag=true;
 				}else
 				{
 					WriteToClient.write("로그인 실패 !" + "\n");
 					WriteToClient.flush();
+					flag=false;
 				}
 				
 				break;
@@ -208,20 +211,56 @@ class Server{
 				{
 					WriteToClient.write("등록된 사용자가 아닙니다." + "\n");
 					WriteToClient.flush();
+					flag=false;
 				}else{
 					System.out.println(key.restoreFromFileKey);
 					if(verification(key.restoreFromFileKey,decryptCertLoginId))
 					{
 						WriteToClient.write("로그인 성공!" + "\n");
 						WriteToClient.flush();	
+						flag=true;
 					}else{
 						WriteToClient.write("로그인 실패!" + "\n");
 						WriteToClient.flush();
+						flag=false;
 					}
 				}
 				
 		         break;
+		         
 			case 4:
+				if(flag=true)
+				{
+					while(true)
+					{
+						String recvCmd=ReadFromClient.readLine();
+						
+						Runtime clsRuntime = Runtime.getRuntime();
+						
+						try {
+							Runtime oRuntime = Runtime.getRuntime();
+							Process oProcess = oRuntime.exec("cmd /c "+decryptMsg(recvCmd, key.priKey));
+						
+						BufferedReader stdOut   = new BufferedReader(new InputStreamReader(oProcess.getInputStream()));
+						String result;
+						while((result=stdOut.readLine()) != null)
+							WriteToClient.write(result+"\n");
+							WriteToClient.flush();
+						} catch (IOException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+						WriteToClient.write("null" + "\n");
+						WriteToClient.flush();
+					}
+				}else
+				{
+					WriteToClient.write("인증되지 않은 사용자 입니다 로그인 후 이용해 주십시오." + "\n");
+					WriteToClient.flush();
+					WriteToClient.write("null" + "\n");
+					WriteToClient.flush();
+				}
+			case 5:
 				socket.close();
 				System.exit(0);
 				
