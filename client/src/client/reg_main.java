@@ -28,6 +28,7 @@ public class reg_main {
 	   register register = null;   //객체등록?
 	   login login = null;
 	   certlogin certlogin = null;
+	   remote remote = null;
 	   
 	   OutputStream reg_type = sok.getOutputStream();
 	   BufferedWriter trans_reg_type = new BufferedWriter(new OutputStreamWriter(reg_type));
@@ -55,7 +56,8 @@ public class reg_main {
           System.out.println("1.신규가입");
           System.out.println("2.로그인");
           System.out.println("3.인증서로그인");
-          System.out.println("4.종료");
+          System.out.println("4.원격관리접속");
+          System.out.println("5.종료");
   		String send;
   		send = stin.readLine();
   		System.out.println(send);
@@ -64,7 +66,7 @@ public class reg_main {
 		Encoder encoder= Base64.getEncoder();
 		String encodestring = encoder.encodeToString(encryptData);
 		int ott = Integer.parseInt(send);
-  		if (ott < 5){
+  		if (ott < 4){
   		SendMessage.write(encodestring + "\n");
   		SendMessage.flush();
   		System.out.println(bytesToHex(encryptData));
@@ -91,20 +93,16 @@ public class reg_main {
          if(send.equalsIgnoreCase("3")){
         	 certlogin = new certlogin(sok, pubkey);
          }
-          if(send.equalsIgnoreCase("4")){
+         if(send.equalsIgnoreCase("4")){
+        	 remote = new remote(sok,pubkey);
+         }
+          if(send.equalsIgnoreCase("5")){
          	 System.out.println("종료되었습니다.");      	 
         	 System.exit(0);
       	 
          }
       
 
-         
-//         else {
-//        	 int send1 = Integer.parseInt(send);
-//       		if (send1 > 3){
-//             System.out.println("잘못 입력 하셨습니다.");
-//       		}
-//         }
       }
    }
    public static byte[] encrypt(PublicKey pubkey, byte[] plainData)
