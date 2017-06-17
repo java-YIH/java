@@ -19,14 +19,13 @@ public class login extends reg_main{
 	private String check = "login";
 	private String login_succ;
 	
-	private String hostname = "127.0.0.1";
-	private int port = 8000;
+
 	
-	public login() throws UnknownHostException, IOException{
+	public login(Socket sok) throws UnknownHostException, IOException{
 		
 		BufferedReader type = new BufferedReader(new InputStreamReader(System.in));
 		
-		Socket sok = new Socket(hostname,port);
+
 		
 		OutputStream reg_type = sok.getOutputStream();
 		BufferedWriter trans_login_type = new BufferedWriter(new OutputStreamWriter(reg_type));

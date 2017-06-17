@@ -15,12 +15,11 @@ public class register extends reg_main{
 	private String ID;
 	private String password;
 	
-	private String hostname = "127.0.0.1";
-	private int port = 8000;
+
 	
-	public register() throws IOException{
+	public register(Socket sok) throws IOException{
 		
-		Socket sok = new Socket(hostname,port);
+		
 		BufferedReader type = new BufferedReader(new InputStreamReader(System.in));
 		
 		OutputStream reg_type = sok.getOutputStream();
@@ -28,12 +27,6 @@ public class register extends reg_main{
 		
 	    System.out.println("== 신규 가입 ==");
 	    
-	    
-	    
-	    
-	    name = type.readLine();
-	    trans_reg_type.write(name+ "\n");
-	    trans_reg_type.flush();
 	    
 	    System.out.print("ID = ");
 	    
