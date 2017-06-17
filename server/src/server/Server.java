@@ -20,7 +20,12 @@ import java.security.PublicKey;
 
 class Server{
 	
-	public void RSAEncryption() throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException
+	public static class Key
+	{
+		byte[] publicKey;
+		byte[] privateKey;
+	}
+	public static void RSAEncryption(Key key) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException
 	{
 		KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
         generator.initialize(1024); 
@@ -30,16 +35,17 @@ class Server{
         Charset charset = Charset.forName("UTF-8");
         
         System.out.println("=== RSA 키생성 ===");
-        byte[] pubk = publicKey.getEncoded();
-        byte[] prik = privateKey.getEncoded(); 
+        key.publicKey = publicKey.getEncoded();
+        key.privateKey = privateKey.getEncoded(); 
         System.out.println(" 공개키 포맷 : "+publicKey.getFormat());
         System.out.println(" 개인키 포맷 : "+privateKey.getFormat());
-        System.out.println(" 공개키 : "+bytesToHex(pubk));
-        System.out.println(" 공개키 길이 : "+pubk.length+ " byte" );	
-        System.out.println(" 개인키 : "+bytesToHex(prik));
-        System.out.println(" 개인키 길이 : "+prik.length+ " byte" );
+        System.out.println(" 공개키 : "+bytesToHex(key.publicKey));
+        System.out.println(" 공개키 길이 : "+key.publicKey.length+ " byte" );	
+        System.out.println(" 개인키 : "+bytesToHex(key.privateKey));
+        System.out.println(" 개인키 길이 : "+key.privateKey.length+ " byte" );
         System.out.println();
-        
+       
+        /*
         System.out.println("=== RSA 암호화 ===");
         Scanner s = new Scanner(System.in);
         System.out.print("암호화할 평문을 입력해주세요 >>> ");
@@ -55,14 +61,15 @@ class Server{
         System.out.println(" Ciphertext : "+bytesToHex(b0));
         System.out.println(" Ciphertext Length : "+b0.length+ " byte" );	
         System.out.println();
-        
+     */
+        /*
         System.out.println("=== RSA 복호화 ===");
         cipher.init(Cipher.DECRYPT_MODE, privateKey);
         byte[] b1 = cipher.doFinal(b0);
         System.out.println(" Recovered Plaintext : "+ bytesToHex(b1)); 
         System.out.println(" Recovered Plaintext Length : "+b1.length+ " byte" );	
         System.out.println(" Recovered Plaintext : "+ new String(b1, charset));
-        
+        */
 	    		        
 	}
    
@@ -87,10 +94,15 @@ class Server{
 	private static String login_succ = "로그인 성공";
 	private static String login_fail = "로그인 실패";
 	
-	public static void main(String[] args) throws IOException{
+	public static void main(String[] args) throws IOException, InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException{
 	
+		Key key = new Key();
+		RSAEncryption(key);
+		System.out.println("Main In ");
+		System.out.println(" 공개키 : "+bytesToHex(key.publicKey));
+		
 		ServerSocket serverSocket = null;
-		serverSocket = new ServerSocket(8010);
+		serverSocket = new ServerSocket(8011);
 		
 		System.out.println("Server strating");
 		
