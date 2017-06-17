@@ -15,7 +15,7 @@ import java.util.Base64.Encoder;
 
 public class certlogin extends reg_main{
 	
-	
+	 
 	private String ID;
 	private String certificationpw;
 	
