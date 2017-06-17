@@ -27,7 +27,7 @@ public class register extends reg_main{
 		
 	    System.out.println("== 신규 가입 ==");
 	    
-	    
+	    //
 	    System.out.print("ID = ");
 	    
 	    ID = type.readLine();
